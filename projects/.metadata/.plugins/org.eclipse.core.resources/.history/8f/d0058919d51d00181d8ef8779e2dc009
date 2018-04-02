@@ -1,0 +1,71 @@
+#include "PWMDriver.h"
+#include <PWMDriver.h>
+
+void PWMDriver::pwmSelectAllPins()
+{
+
+    //PWM Function when 10 (2)
+
+    LPC_PINCON->PINSEL4 |= (0x555 << 0);    //Set bit 11:0 to 0101 0101 0101
+
+}
+
+void PWMDriver::pwmSelectPin(PWM_PIN pwm_pin_arg)
+{
+    switch (pwm_pin_arg) {
+        case 0: {
+            LPC_PINCON->PINSEL4 |= (2 << 0);
+            break;
+        }
+        case 1: {
+            LPC_PINCON->PINSEL4 |= (2 << 2);
+            break;
+        }
+        case 2: {
+            LPC_PINCON->PINSEL4 |= (2 << 4);
+            break;
+        }
+        case 3: {
+            LPC_PINCON->PINSEL4 |= (2 << 6);
+            break;
+        }
+        case 4: {
+            LPC_PINCON->PINSEL4 |= (2 << 8);
+            break;
+        }
+        case 5: {
+            LPC_PINCON->PINSEL4 |= (2 << 10);
+            break;
+        }
+    }
+}
+
+void PWMDriver::pwmInitSingleEdgeMode(uint32_t frequency_Hz)
+{
+
+    //Power Up
+    LPC_SC->PCONP &= ~(1 << 6);       //Set bit 6 to 0
+    //Peripheral Clock
+    LPC_SC->PCLKSEL0 |= (3 << 12);    //Set bits 12 and 13 to 1 and 1
+
+}
+
+void PWMDriver::setDutyCycle(PWM_PIN pwm_pin_arg, float duty_cycle_percentage)
+{
+
+}
+
+namespace std {
+
+PWMDriver::PWMDriver()
+{
+    // TODO Auto-generated constructor stub
+
+}
+
+PWMDriver::~PWMDriver()
+{
+    // TODO Auto-generated destructor stub
+}
+
+} /* namespace std */

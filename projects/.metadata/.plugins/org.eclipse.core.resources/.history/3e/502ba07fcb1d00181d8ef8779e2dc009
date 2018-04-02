@@ -1,0 +1,70 @@
+/*
+ * ADCDriver.cpp
+ *
+ *  Created on: Feb 23, 2018
+ *      Author: Amrinder
+ */
+#include "ADCDriver.h"
+
+
+   /**
+    * 1) Powers up ADC peripheral
+    * 2) Set peripheral clock
+    * 2) Enable ADC
+    * 3) Select ADC channels
+    * 4) Enable burst mode
+    */
+
+void ADCDriver::adcInitBurstMode() {
+    //To Power up ADC
+    LPC_SC->PCONP |= (1<<12);
+
+    //Setting Peripheral Clock
+    LPC_SC->PCLKSEL0 |= (1<<25);
+    LPC_SC->PCLKSEL0 |= (1<<24);
+
+    //Enable ADC
+    LPC_ADC->ADCR|= (1<<21);
+
+
+    //Select ADC Channels
+    LPC_ADC->ADCR |= (1<<0);
+
+    //Enable Burst Mode
+    LPC_ADC->ADCR |= (1<<16);
+}
+
+
+/**
+    * 1) Selects ADC functionality of any of the 8 pins that are ADC capable
+    *
+    * @param adc_pin_arg is the ADC_PIN enumeration of the desired pin.
+    *
+    * WARNING: For proper operation of the SJOne board, do NOT configure any pins
+    *           as ADC except for 0.26, 1.31, 1.30
+    */
+
+void ADCDriver::adcSelectPin(ADC_PIN adc_pin_arg) {
+
+    if(adc_pin_arg == ADC_PIN_1_30)
+        LPC_PINCON->PINSEL3 |= (3<<28);     //Function when 11 = 3
+    else if (adc_pin_arg == ADC_PIN_0_26)
+        LPC_PINCON->PINSEL1 |= (0x1<<20);     //Function when 01 = 1
+    else if (adc_pin_arg == ADC_PIN_1_31)
+        LPC_PINCON->PINSEL3 |= (3<<30);     //Function when 11 = 3
+
+}
+
+/**
+    * 1) Returns the voltage reading of the 12bit register of a given ADC channel
+    *
+    * @param adc_channel_arg is the number (0 through 7) of the desired ADC channel.
+    */
+
+float ADCDriver::readADCVoltageByChannel(uint8_t adc_channel_arg) {
+   volatile uint32_t *p = &(LPC_ADC->ADDR0);
+    p += adc_channel_arg;
+    return *p;
+
+
+}

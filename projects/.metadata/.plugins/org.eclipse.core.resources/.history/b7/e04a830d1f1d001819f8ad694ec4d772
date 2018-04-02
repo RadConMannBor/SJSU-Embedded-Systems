@@ -1,0 +1,21 @@
+/*
+ * PWMDriver.h
+ *
+ *  Created on: Feb 28, 2018
+ *      Author: cborm
+ */
+
+#ifndef PWMDRIVER_H_
+#define PWMDRIVER_H_
+
+namespace std {
+
+class PWMDriver {
+public:
+    PWMDriver();
+    virtual ~PWMDriver();
+};
+
+} /* namespace std */
+
+#endif /* PWMDRIVER_H_ */

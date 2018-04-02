@@ -1,0 +1,17 @@
+/*
+ * LabSPI.h
+ *
+ *  Created on: Mar 2, 2018
+ *      Author: cborm
+ */
+
+#ifndef LABSPI_H_
+#define LABSPI_H_
+
+class LabSPI {
+public:
+    LabSPI();
+    virtual ~LabSPI();
+};
+
+#endif /* LABSPI_H_ */

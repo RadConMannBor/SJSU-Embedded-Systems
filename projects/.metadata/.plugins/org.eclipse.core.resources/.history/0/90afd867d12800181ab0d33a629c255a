@@ -1,0 +1,82 @@
+
+
+#ifndef LABUART_H
+#define LABUART_H
+
+#include "FreeRTOS.h"
+#include "lpc_isr.h"
+#include "LPC17xx.h"
+#include <stdio.h>
+#include <sys_config.h>
+#include "queue.h"
+
+
+class LabUART
+{
+private:
+
+    QueueHandle_t TXqueue;
+    QueueHandle_t RXqueue;
+    bool IsDataAvailable;
+    int n;
+
+
+public:
+
+
+    enum UART{
+        UART2 = 2,
+        UART3 = 3
+    };
+
+    LabUART() {}
+    ~LabUART() {}
+
+    bool getBool();
+
+    void init(UART sel);
+
+    void my_uart2_intr();
+
+    void sendChar(char data);
+
+    char getChar();
+
+};
+
+
+
+
+/*#ifndef LABUART_H
+#define LABUART_H
+
+#include "lpc_isr.h"
+#include "LPC17xx.h"
+#include "io.hpp"
+#include <stdint.h>
+#include <stdio.h>
+
+
+class LabUART
+{
+private:
+
+public:
+    enum Peripheral{
+        UART0 = 0,
+        UART1 = 1,
+        UART2 = 2,
+        UART3 = 3
+    };
+    LabUART();
+    ~LabUART();
+
+    void init(Peripheral peripheral);
+
+    // TODO: Fill in methods for init(), transmit(), receive() etc.
+
+    // Optional: For the adventurous types, you may inherit from "CharDev" class to get a lot of funcionality for free
+};
+
+#endif
+*/

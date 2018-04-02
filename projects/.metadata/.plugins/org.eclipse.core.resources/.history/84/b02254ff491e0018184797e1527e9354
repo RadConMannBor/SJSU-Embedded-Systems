@@ -1,0 +1,92 @@
+
+/**
+ * @file
+ * @brief This is the application entry point.
+ * 			FreeRTOS and stdio printf is pre-configured to use uart0_min.h before main() enters.
+ * 			@see L0_LowLevel/lpc_sys.h if you wish to override printf/scanf functions.
+ *
+ */
+#include "tasks.hpp"
+#include "examples/examples.hpp"
+#include "LabGPIOInterrupts.h"
+#include "lpc_isr.h"
+#include "LPC17xx.h"
+#include "io.hpp"
+#include "LabGPIO0.h"
+#include "FreeRTOSConfig.h"
+#include "FreeRTOS.h"
+#include <stdint.h>
+#include <stdio.h>
+#include "utilities.h"
+#include "labGPIO0.h"
+#include "uart0_min.h"
+#include "ADCDriver.h"
+#include "PWMDriver.h"
+
+ADCDriver* part1;
+PWMDriver* xPWM;
+//LabGPIOInterrupts gpio_intr_instance;
+
+
+
+void printVoltage(uint8_t adc_channel_arg){
+    if(adc_channel_arg==0){
+        printf("0\n");
+    }
+    else if(adc_channel_arg==1){
+        printf("1\n");
+    }
+    else if(adc_channel_arg==2){
+        printf("2\n");
+        }
+    else if(adc_channel_arg==3){
+        printf("3\n");
+        }
+    else if(adc_channel_arg==4){
+        printf("4\n");
+        }
+    else if(adc_channel_arg==5){
+        printf("5\n");
+        }
+    else if(adc_channel_arg==6){
+        printf("6\n");
+        }
+    else{
+        printf("7\n");
+        }
+}
+
+
+void vControlLED(void * pvParameters )
+{
+
+
+    part1->adcSelectPin(part1->ADC_PIN_1_30);
+    part1->adcInitBurstMode();
+    float duty_cycle_percentage;
+    //Select Pin
+     xPWM->pwmSelectPin(xPWM->PWM_PIN_2_0);
+     xPWM->pwmInitSingleEdgeMode(1000);
+
+      while(1)
+      {
+          //Read voltage
+          duty_cycle_percentage = part1->readADCVoltageByChannel(part1->ADC_PIN_1_30);
+
+          printf("Voltage: %d\n", duty_cycle_percentage);
+
+          //Set Duty Cycle
+          xPWM->setDutyCycle(xPWM->PWM_PIN_2_0, 50);
+
+          vTaskDelay(100);
+      }
+}
+
+int main(void)
+{
+    const uint32_t STACK_SIZE = 1024;
+
+    xTaskCreate(vControlLED,"instance",STACK_SIZE,(void *) 0,1,NULL);
+    vTaskStartScheduler();
+    return 0;
+}

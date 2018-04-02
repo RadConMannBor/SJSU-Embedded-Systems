@@ -1,0 +1,17 @@
+/*
+ * labGPIO0.h
+ *
+ *  Created on: Feb 9, 2018
+ *      Author: cborm
+ */
+
+#ifndef LABGPIO0_H_
+#define LABGPIO0_H_
+
+class labGPIO_0 {
+public:
+    labGPIO_0();
+    virtual ~labGPIO_0();
+};
+
+#endif /* LABGPIO0_H_ */

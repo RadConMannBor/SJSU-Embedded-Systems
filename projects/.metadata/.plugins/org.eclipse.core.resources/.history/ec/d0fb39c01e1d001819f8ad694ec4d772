@@ -1,0 +1,23 @@
+/*
+ * ADCDriver.cpp
+ *
+ *  Created on: Feb 28, 2018
+ *      Author: cborm
+ */
+
+#include <ADCDriver.h>
+
+namespace std {
+
+ADCDriver::ADCDriver()
+{
+    // TODO Auto-generated constructor stub
+
+}
+
+ADCDriver::~ADCDriver()
+{
+    // TODO Auto-generated destructor stub
+}
+
+} /* namespace std */

@@ -1,0 +1,143 @@
+
+/**
+ * @file
+ * @brief This is the application entry point.
+ * 			FreeRTOS and stdio printf is pre-configured to use uart0_min.h before main() enters.
+ * 			@see L0_LowLevel/lpc_sys.h if you wish to override printf/scanf functions.
+ *
+ */
+#include "tasks.hpp"
+#include "examples/examples.hpp"
+#include "LabGPIOInterrupts.h"
+#include "lpc_isr.h"
+#include "LPC17xx.h"
+#include "io.hpp"
+#include "LabGPIO0.h"
+#include "FreeRTOSConfig.h"
+#include "FreeRTOS.h"
+#include <stdint.h>
+#include <stdio.h>
+#include "utilities.h"
+#include "labGPIO0.h"
+#include "uart0_min.h"
+#include "ADCDriver.h"
+
+
+
+//LabGPIOInterrupts gpio_intr_instance;
+
+// This function will simply delegate the interrupt handling to our C++ class
+// The CPU interrupt should be attached to this function through isr_register()
+//void c_eint3_handler(void)
+//{
+//    gpio_intr_instance.handle_interrupt();
+//}
+//SemaphoreHandle_t xSemaphore;
+/**
+ * main() should register C function as callback for the EINT3
+ * This is because we cannot register a C++ function as a callback through isr_register()
+ *
+ * There are workarounds, such as static functions inside a class, but that design is
+ * not covered in this assignment
+ */
+
+void printVoltage(uint8_t adc_channel_arg){
+    if(adc_channel_arg==0){
+        printf("0\n");
+    }
+    else if(adc_channel_arg==1){
+        printf("1\n");
+    }
+    else if(adc_channel_arg==2){
+        printf("2\n");
+        }
+    else if(adc_channel_arg==3){
+        printf("3\n");
+        }
+    else if(adc_channel_arg==4){
+        printf("4\n");
+        }
+    else if(adc_channel_arg==5){
+        printf("5\n");
+        }
+    else if(adc_channel_arg==6){
+        printf("6\n");
+        }
+    else{
+        printf("7\n");
+        }
+}
+
+
+void vControlLED(void * pvParameters ){
+//    LabGPIO_1 Port1(0);
+//    LabGPIO_0 Port0();
+    ADCDriver* part1;
+    part1->adcInitBurstMode();
+    part1->adcSelectPin(part1->ADC_PIN_0_30);
+
+    printf("in control led\n");
+   while(1){
+       //Read voltage
+       float duty_cycle_percentage = part1->readADCVoltageByChannel(part1->ADC_PIN_1_30);
+       printf("Voltage: %d", duty_cycle_percentage);
+       vTaskDelay(100);
+
+   }
+
+}
+/*
+void switchPin1(void){
+    if(LPC_GPIOINT->IO0IntStatR &(1<<1) ||LPC_GPIOINT->IO0IntStatF &(1<<1))
+    {
+        LabGPIO_1 Port0(0);
+        printf(" Interrupt! Port 0 pin 0 \n");
+        LPC_GPIOINT->IO0IntClr = (1<<1);  // P0.1 Switch
+        Port0.setDirection(true);
+                                Port0.setLow();
+                                vTaskDelay(1000);
+                                Port0.setHigh();
+                                vTaskDelay(1000);
+                                Port0.setLow();
+                                vTaskDelay(1000);
+                                Port0.setHigh();
+        //xSemaphoreGive(xSemaphore);
+    }
+}
+
+void switchPin2(void){
+    if(LPC_GPIOINT->IO0IntStatR&(1<<1) ||LPC_GPIOINT->IO0IntStatF &(1<<1))
+    {
+        LPC_GPIOINT->IO0IntClr = (1<<0);  // P0.0 Switch
+        //XSemaphoreGive(xSemaphore);
+    }
+}
+*/
+
+
+int main(void)
+{
+
+    const uint32_t STACK_SIZE = 1024;
+    printf("hello\n");
+
+
+    xTaskCreate(vControlLED,"instance",STACK_SIZE,(void *) 0,1,NULL);
+    printf("hello\n");
+/*
+    // Init things once
+    //gpio_intr_instance.init();
+    //c_eint3_handler();
+    gpio_intr_instance.attachInterruptHandler(0,1,switchPin1,rising_edge);
+    isr_register(EINT3_IRQn, switchPin1);
+    NVIC_EnableIRQ(EINT3_IRQn);
+
+    // Register C function which delegates interrupt handling to your C++ class function
+    xTaskCreate(vControlLED,"instance",STACK_SIZE,(void *) 0,1,NULL);
+
+    // Create tasks and test your interrupt handler
+    vTaskStartScheduler();
+*/
+    vTaskStartScheduler();
+    return 0;
+}

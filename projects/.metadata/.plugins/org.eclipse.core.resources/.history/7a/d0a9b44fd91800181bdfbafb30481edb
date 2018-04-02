@@ -1,0 +1,102 @@
+
+/**
+ * @file
+ * @brief This is the application entry point.
+ * 			FreeRTOS and stdio printf is pre-configured to use uart0_min.h before main() enters.
+ * 			@see L0_LowLevel/lpc_sys.h if you wish to override printf/scanf functions.
+ *
+ */
+#include "tasks.hpp"
+#include "examples/examples.hpp"
+#include "LabGPIOInterrupts.h"
+#include "lpc_isr.h"
+#include "LPC17xx.h"
+#include "io.hpp"
+#include "LabGPIO0.h"
+#include "FreeRTOSConfig.h"
+#include "FreeRTOS.h"
+#include <stdint.h>
+#include <stdio.h>
+#include "utilities.h"
+#include "labGPIO0.h"
+#include "uart0_min.h"
+
+/* Since we have a C++ class handle an interrupt, we need to setup a C function delegate to invoke it
+ * So here is the skeleton code that you can reference
+ */
+
+/**
+ * Unless you design Singleton class, we need a global instance of our class because
+ * the asynchronous c_eint3_handler() will need to invoke our C++ class instance callback
+ * WARNING: You must use this same instance while testing your main()
+ */
+LabGPIOInterrupts gpio_intr_instance;
+
+// This function will simply delegate the interrupt handling to our C++ class
+// The CPU interrupt should be attached to this function through isr_register()
+void c_eint3_handler(void)
+{
+    gpio_intr_instance.handle_interrupt();
+}
+SemaphoreHandle_t xSemaphore;
+/**
+ * main() should register C function as callback for the EINT3
+ * This is because we cannot register a C++ function as a callback through isr_register()
+ *
+ * There are workarounds, such as static functions inside a class, but that design is
+ * not covered in this assignment
+ */
+void vControlLED(void * pvParameters ){
+    uint8_t semMarker;
+    LabGPIO_0 Port0(0);
+    //Port0.setAsOutput;
+    printf("in control led\n");
+   while(1){
+       if(xSemaphoreTake(xSemaphore, portMAX_DELAY)){
+           semMarker= semMarker + 1;
+           printf("In the semaphore\n");
+
+       }
+   }
+
+}
+
+void switchPin1(void){
+    if(LPC_GPIOINT->IO0IntStatR &(1<<1) ||LPC_GPIOINT->IO0IntStatF &(1<<1))
+    {
+        printf("Port 0 pin 0 ");
+        LPC_GPIOINT->IO0IntClr = (1<<1);  // P0.1 Switch
+        xSemaphoreGive(xSemaphore);
+    }
+}
+
+void switchPin2(void){
+    if(LPC_GPIOINT->IO0IntStatR&(1<<1) ||LPC_GPIOINT->IO0IntStatF &(1<<1))
+    {
+        LPC_GPIOINT->IO0IntClr = (1<<0);  // P0.0 Switch
+        //XSemaphoreGive(xSemaphore);
+    }
+}
+
+
+
+int main(void)
+{
+    const uint32_t STACK_SIZE = 1024;
+
+    // Init things once
+    //gpio_intr_instance.init();
+    c_eint3_handler();
+    isr_register(EINT3_IRQn, switchPin1);
+    NVIC_EnableIRQ(EINT3_IRQn);
+    gpio_intr_instance.attachInterruptHandler(0,1,switchPin1,1);
+    // Register C function which delegates interrupt handling to your C++ class function
+    //isr_register(EINT3_IRQn, switchPin1);
+    //xSemaphore = xSemphoreCreateBinary();
+    xTaskCreate(vControlLED,"instance",STACK_SIZE,(void *) 0,1,NULL);
+
+    // Create tasks and test your interrupt handler
+    vTaskStartScheduler();
+
+    return 0;
+}

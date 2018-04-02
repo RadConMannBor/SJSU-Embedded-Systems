@@ -1,0 +1,42 @@
+/*
+ * LabUART.cpp
+ *
+ *  Created on: Mar 9, 2018
+ *      Author: cborm
+ */
+
+#include <LabUART.h>
+
+LabUART::LabUART()
+{
+    // TODO Auto-generated constructor stub
+
+}
+
+LabUART::~LabUART()
+{
+    // TODO Auto-generated destructor stub
+}
+
+void LabUART::init(Peripheral peripheral){
+    // TODO: Queue your data and clear UART Rx interrupt
+     LPC_SC->PCONP |= (1<<24);
+     //Turn on Clock
+     LPC_SC->PCLKSEL1 &=~(3<<16);
+     LPC_SC->PCLKSEL1 |= (1<<16);
+     //set DLAB = 1
+     LPC_UART2->LCR |=(1<<7);
+     //set frame size to 8
+     LPC_UART2->LCR|=(3<<0);
+     //set baud rate 57600
+     LPC_UART2->DLL =(0x625<<0)&0xFF;//or 104 if it changes
+     LPC_UART2->DLM =(0x625<<8)&0xFF;
+     //Select tx2
+     LPC_PINCON->PINSEL0 |= (1 << 20);
+     //Select rx2
+     LPC_PINCON->PINSEL0 |= (1 << 22);
+     //SET dlab to 0
+     LPC_UART2->LCR &=~(1<<7);
+     //Turn RX2 interrupts on
+     LPC_UART2->IER |=(1<<0);
+}

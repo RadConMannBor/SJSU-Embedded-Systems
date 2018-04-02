@@ -1,0 +1,647 @@
+
+/**
+ * @file
+ * @brief This is the application entry point.
+ * 			FreeRTOS and stdio printf is pre-configured to use uart0_min.h before main() enters.
+ * 			@see L0_LowLevel/lpc_sys.h if you wish to override printf/scanf functions.
+ *
+ */
+#include "tasks.hpp"
+#include "examples/examples.hpp"
+#include "LabGPIOInterrupts.h"
+#include "lpc_isr.h"
+#include "LPC17xx.h"
+#include "io.hpp"
+#include "LabGPIO0.h"
+#include "FreeRTOSConfig.h"
+#include "FreeRTOS.h"
+#include <stdint.h>
+#include <stdio.h>
+#include "utilities.h"
+#include "labGPIO0.h"
+#include "uart0_min.h"
+#include "ADCDriver.h"
+#include "PWMDriver.h"
+#include "semphr.h"
+#include "LabSPI.h"
+#include "uart0_min.h"
+#include "LabUART.h"
+
+
+QueueHandle_t q;
+QueueHandle_t qT;
+LabUART temp;
+int x;
+LabUART UART_Instance;
+void my_uart2_rx_intr(void)
+{
+
+
+}
+void init_my_uart2(void)
+{
+  // Init PINSEL, baud rate, frame size, etc.
+
+  // Init UART Rx interrupt (TX interrupt is optional)
+  //  isr_register(Uart2, my_uart2_rx_intr);
+    LPC_SC->PCONP |= (1<<24);
+    //Turn on Clock
+    LPC_SC->PCLKSEL1 &=~(3<<16);
+    LPC_SC->PCLKSEL1 |= (1<<16);
+    //set DLAB = 1
+    LPC_UART2->LCR |=(1<<7);
+    //set frame size to 8
+    LPC_UART2->LCR|=(3<<0);
+    //set baud rate 57600
+    uint8_t dll = sys_get_cpu_clock() / (16 * 38400); //get dll
+    LPC_UART2->DLL = dll;
+
+    //LPC_UART2->DLL =(0x625<<0)&0xFF;//or 104 if it changes
+    //LPC_UART2->DLM =(0x625<<8)&0xFF;
+
+    LPC_PINCON->PINSEL4 &= ~(0xF << 16); // Clear values
+    LPC_PINCON->PINSEL4 |=  (0xA << 16);
+    //Select tx2
+    //LPC_PINCON->PINSEL0 |= (1 << 20);
+    //Select rx2
+    //LPC_PINCON->PINSEL0 |= (1 << 22);
+    //SET dlab to 0
+    LPC_UART2->LCR |=(0<<7);
+    //Turn RX2 interrupts on
+    LPC_UART2->IER |=(1<<0);
+
+    LPC_UART2->IER |=(1<<2);//set rx line status to 1 bit 2
+
+    LPC_UART2->FCR |=(1<<0);
+    LPC_UART2->FCR |=(1<<1);
+    LPC_UART2->FCR |=(1<<2);
+    LPC_UART2->FCR |=(1<<3);
+    LPC_UART2->FCR |=(0<<6);
+    LPC_UART2->TER |=(1<<7); //transmit enable
+
+    //isr_register(UART2_IRQn, my_uart2_rx_intr);
+    //NVIC_EnableIRQ(UART2_IRQn);
+}
+/*
+void producer(void *p)
+{
+
+
+  while (1) {
+    vTaskDelay(100);
+    xQueueSend(q, &x, 0);; // TODO: Find out the significance of the parameters of xQueueSend()
+    ++x;
+  }
+}
+
+void consumer(void *p)
+{
+  while (1) {
+    // We do not need vTaskDelay() because this task will sleep for up to 100ms until there is an item in the queue
+    if (xQueueReceive(q, &x, 100)) {
+      printf("Got %i\n", x);
+    }
+    else {
+      puts("Timeout --> No data received");
+    }
+  }
+}*/
+
+
+
+
+// WARNING: Some of this is psuedocode, so you figure out ;)
+
+
+void sendChar(char data){
+    //printf("\nsend char \n");
+    LPC_UART2->THR = data;
+    //printf("send char\n");
+    printf("\nData %c has been sent",data);
+    vTaskDelay(100);
+
+    while(1){
+        if(LPC_UART2->LSR &(1<<5))break;
+    }
+}
+
+uint8_t getChar(){
+    uint8_t dataReceived = LPC_UART2->RBR;
+    printf("\n Data %i has been received, dataReceived");
+    vTaskDelay(100);
+    return dataReceived;
+}
+
+
+void ALU(char t0,char t1,char t2)
+{
+    uint8_t ones=0, tens=0;
+    char onesOut, tensOut;
+    printf("\n input: %c %c %c\n", t0, t1, t2);
+    if(t2 == '+')
+    {
+        uint8_t number1 =(uint8_t)(t1);
+        uint8_t number0 =(uint8_t)(t0);
+        number1=number1-48;
+        number0=number0-48;
+        printf("\nn1:%i n2:%i\n",number1, number0);
+        uint8_t answer = number0 + number1;
+        printf("\n%i\n",answer);
+
+        if(answer>=10)
+        {
+            ones = answer%10;
+            tensOut = '1';
+            temp.sendChar('1');
+            temp.sendChar((char)ones);
+            printf("\n answer: %c%i\n",tensOut,ones);
+        }
+        else{
+            ones = answer;
+            temp.sendChar((char)ones);
+            printf("\n answer: %i\n",ones);
+        }
+    }
+    else if(t2 == '-')
+    {
+        uint8_t number1 =(uint8_t)(t1);
+        uint8_t number0 =(uint8_t)(t0);
+        number1=number1-48;
+        number0=number0-48;
+        uint8_t answer = number0 - number1;
+
+        if(answer>9)
+        {
+            ones = answer%10;
+            tensOut = '1';
+            temp.sendChar('1');
+            temp.sendChar((char)ones);
+        }
+        else{
+            ones = answer%10;
+            //sendChar((char)ones);
+        }
+    }
+    else if(t2 == '*')
+    {
+        uint8_t number1 =(uint8_t)(t1);
+        uint8_t number0 =(uint8_t)(t0);
+        number1=number1-48;
+        number0=number0-48;
+        uint8_t answer = number0 * number1;
+
+        if(answer>9)
+        {
+            ones = answer%10;
+            tens = ((answer-ones)/10);
+            temp.sendChar((char)tens);
+            temp.sendChar((char)ones);
+        }
+        else{
+            ones = answer%10;
+            temp.sendChar((char)ones);
+        }
+    }
+}
+void uart_rx_isr(char tx)
+{
+  sendChar(tx);
+  xQueueSendFromISR(qT, &tx, NULL); // TODO: Find out the significance of the parameters
+}
+
+
+void oneTask(void *p){
+    char rx;
+    char receive_Array[2];
+    int index=0;
+    while(1){
+
+    if(xQueueReceive(q, &rx, NULL)){
+        printf("Got %i\n", rx);
+        vTaskDelay(100);
+        uint8_t ones, tens;
+        char onesOut, tensOut;
+        if(rx == '+'){
+            uint8_t number1 =(uint8_t)(receive_Array[1]);
+            uint8_t number0 =(uint8_t)(receive_Array[0]);
+            uint8_t answer = number0 + number1;
+
+            if(answer>9)
+            {
+                ones = answer%10;
+                tensOut = '1';
+                sendChar('1');
+                sendChar((char)ones);
+            }
+            else{
+                ones = answer%10;
+                sendChar((char)ones);
+            }
+        }
+        else if(rx == '-')
+        {
+            uint8_t number1 =(uint8_t)(receive_Array[1]);
+            uint8_t number0 =(uint8_t)(receive_Array[0]);
+            uint8_t answer = number0 - number1;
+
+            if(answer>9)
+            {
+                ones = answer%10;
+                tensOut = '1';
+                sendChar('1');
+                sendChar((char)ones);
+            }
+            else{
+                ones = answer%10;
+                sendChar((char)ones);
+            }
+        }
+        else if(rx == '*')
+        {
+            uint8_t number1 =(uint8_t)(receive_Array[1]);
+            uint8_t number0 =(uint8_t)(receive_Array[0]);
+            uint8_t answer = number0 * number1;
+
+            if(answer>9)
+            {
+                ones = answer%10;
+                tens = ((answer-ones)/10);
+                sendChar((char)tens);
+                sendChar((char)ones);
+            }
+            else{
+                ones = answer%10;
+                sendChar((char)ones);
+            }
+        }
+        else{
+            receive_Array[index] = rx;
+            ++index;
+        }
+    }
+    else {
+          puts("Timeout --> No data received");
+          vTaskDelay(100);
+        }
+    }
+}
+
+void twoTask(void *p){
+    char tx0,tx1,tx2;
+    while (1){
+        //xQueueSendFromISR(q, &tx,NULL );
+
+        uart_rx_isr('5');
+        //uart_rx_isr('2');
+        //uart_rx_isr('+');
+        //++tx;
+        vTaskDelay(100);
+
+    }
+}
+
+void receive_UART(){
+
+}
+
+
+/*
+void my_task(void *p)
+{
+  while (1) {
+    if (xQueueReceive(xQueue, &x, portMAX_DELAY))
+    {
+      printf("Got %c char from my UART... job is half done!");
+    }
+  }
+}
+
+void main(void)
+{
+  init_my_uart2();
+  create_task(my_task);
+}*/
+
+
+void my_intr_handler()
+{
+    temp.my_uart2_intr();
+}
+
+
+void my_task(void *parameters)
+{
+
+    char char1, char2, num1, num2, operation;
+    int result;
+
+    while (1)
+    {
+        num1 = '1';
+        num2 = '8';
+        operation = '+';
+
+        temp.sendChar(num1);
+        temp.sendChar(num2);
+        temp.sendChar(operation);
+
+
+        if(temp.getBool())
+        {
+            char1 = temp.getChar();
+            char2 = temp.getChar();
+            printf("\nResult: %c%c ", char1, char2);
+            ALU();
+            int x = char2 - '0';
+            int y = char1 - '0';
+            int result1 = (x * 10) + y;
+            LD.setNumber(result1);
+
+        }
+        vTaskDelay(1000);
+
+    }
+}
+
+int main(int argc, char const *argv[])
+{
+//    /// This "stack" memory is enough for each task to run properly
+   const uint32_t STACK_SIZE = 1024;
+
+//    //----------------------------------UART lab-----------------------------------------------------------------
+
+
+       temp.init(temp.UART2);
+
+       isr_register(UART2_IRQn, my_intr_handler);
+       NVIC_EnableIRQ(UART2_IRQn);
+
+       xTaskCreate(my_task, "UART", 512, (void *) 1, 1, NULL);
+
+  vTaskStartScheduler();
+
+    return 0;
+  }
+/*
+int main(void)
+{
+    const uint32_t STACK_SIZE = 1024;
+    init_my_uart2();
+    //Labtest.init(LabSPI::Peripheral::SSP1, 7, LabSPI::FrameModes::SPI, 8);//TESTING
+    q = xQueueCreate(3, sizeof(int));
+    q = xQueueCreate(3,sizeof(int));
+
+    ALU('5','4','+');
+    vTaskDelay(100);
+    ALU('5','9','*');
+    vTaskDelay(100);
+    ALU('0','0','+');
+    vTaskDelay(100);
+    ALU('9','9','*');
+    vTaskDelay(100);
+    ALU('8','4','-');
+    //spi_bus_lock = xSemaphoreCreateMutex();
+    //xTaskCreate(oneTask, "Produce", STACK_SIZE, ( void * ) 1, 1, NULL );
+    //xTaskCreate(twoTask, "Consume", STACK_SIZE, ( void * ) 1, 1, NULL );
+    vTaskStartScheduler();
+    return 0;
+}*/
+
+/*-------------------LABSPI-------------------------------------
+uint8_t t1 = 0,
+        t2 = 0,
+        t3 = 0,
+        t4 = 0,
+        t5 = 0;
+
+uint8_t expected1 = 0x1F,
+        expected2 = 0x26,
+        expected3 = 0x00;
+
+// In main(), initialize your Mutex:
+SemaphoreHandle_t spi_bus_lock = xSemaphoreCreateMutex();
+
+typedef union
+{
+    uint8_t byte;
+    struct
+    {
+        uint8_t erase_suspension: 1;
+        uint8_t suspension_status_b1: 1;
+        uint8_t suspension_status_b2: 1;
+        uint8_t lockdown: 1;
+        uint8_t reserved: 1;
+        uint8_t erase_error: 1;
+        uint8_t reserved1: 1;
+        uint8_t ready_busy: 1;
+    } __attribute__((packed));
+} byte2;
+
+
+typedef union
+{
+    uint8_t byte;
+    struct
+    {
+        uint8_t page_size: 1;
+        uint8_t protect: 1;
+        uint8_t density: 4;
+        uint8_t compare: 1;
+        uint8_t ready_Or_busy: 1;
+    } __attribute__((packed));
+} byte1;
+
+
+void adesto_cs()
+{
+    LPC_GPIO0->FIOCLR = (1<<6);
+}
+
+void adesto_ds()
+{
+    LPC_GPIO0->FIOSET |= (1<<6);
+}
+uint8_t spi_transfer(uint8_t out)
+{
+    LPC_SSP1->DR=(out);
+    while(LPC_SSP1->SR &(1<<4));
+    return (LPC_SSP1->DR);
+}
+
+void read_sig(void)
+{
+  uint8_t d[2];
+
+  // The simplest test is to try to read the signature of the Adesto flash and print it out
+  adesto_cs();
+  {
+    d[0] = spi_transfer(0xAB); // TODO: Find what to send to read Adesto flash signature
+    d[1] = spi_transfer(0x11);
+  }
+  adesto_ds();
+
+  printf("Returned data: %x %x\n", d[0], d[1]);
+}
+
+
+
+
+
+
+
+
+void SignalRead(void *p)
+{
+    LabSPI SignalTest;
+    byte1 b1;
+    byte2 b2;
+    SignalTest.init(LabSPI::Peripheral::SSP1, 7, LabSPI::FrameModes::SPI, 8);
+
+    while(1)
+    {
+        if(xSemaphoreTake(spi_bus_lock, 1000))
+        {
+            adesto_cs();
+            // read manufacture ID
+            SignalTest.transfer(0x9F);
+            //Read all device response
+            t1 = SignalTest.transfer(0xAA);
+            t2 = SignalTest.transfer(0xAA);
+            t3 = SignalTest.transfer(0xAA);
+            t4 = SignalTest.transfer(0xAA);
+            t5 = SignalTest.transfer(0xAA);
+            printf("\nManufacture ID is: \t %x",t1);
+            printf("\nDevice ID is: \t %x, %x, %x, %x",t2,t3,t4,t5);
+            SignalTest.transfer(0xAA);
+            SignalTest.transfer(0xAA);
+            adesto_ds();
+
+            if (t1 != expected1 || t2 != expected2 || t3 != expected3)
+            {
+                printf("\n RACE condition!\n");
+                vTaskSuspend(NULL); // Suspend this task
+            }
+
+            adesto_cs();
+            //send opcode for status register
+            SignalTest.transfer(0xD7);
+            //dummy data
+            b1.byte = SignalTest.transfer(0xAA);
+            b2.byte = SignalTest.transfer(0xAA);
+            printf("\n\n---------------------Status Register---------------------\n\n");
+
+            if(b1.ready_Or_busy == 1){
+                printf("\nDevice Ready \n");
+            }
+            else{
+                printf("\nDevice is busy \n");
+            }
+            if(b1.compare == 1){
+                printf("\nMain memory page data doesn't match buffer. \n");
+            }
+            else{
+                printf("\nMain memory page data matches buffer data. \n");
+            }
+            if (b1.density == 0xB ){
+                printf("\n16-Mbit \n");
+            }
+            else {
+                printf("\nNot 16-Mbit \n");
+            }
+            if(b1.protect == 1){
+                printf("\nSector protection is enabled. \n");
+            }
+            else{
+                printf("\nSector protection is disabled. \n");
+            }
+
+
+            if(b2.ready_busy == 1){
+                printf("\nDevice ready \n");
+            }
+            else{
+                printf("\nDevice busy. \n");
+            }
+            if(b2.reserved1 == 0){
+                printf("\nReserved. \n");
+            }
+            if(b2.erase_error == 1){
+                printf("\nErase error detected. \n");
+            }
+            else{
+                printf("\nErase or operation was successful. \n");
+            }
+            if(b2.reserved == 0){
+                printf("\nReserved. \n");
+            }
+            if(b2.lockdown == 1){
+                printf("\nSector Lockdown enabled. \n");
+            }
+            else{
+                printf("\nSector Lockdown disabled. \n");
+            }
+            if(b2.suspension_status_b2 == 1){
+                printf("\nSuspended program while using Buffer 2. \n");
+            }
+            else{
+                printf("\nNo suspended program while using Buffer 2. \n");
+            }
+            if(b2.suspension_status_b1 == 1){
+                printf("\nNo suspended program while using Buffer 1.\n");
+            }
+            else{
+                printf("\nSuspended program while using Buffer 1. \n");
+            }
+            if(b2.erase_suspension == 1){
+                printf("\nNo erase suspension on Sector. \n");
+            }
+            else{
+                printf("\nErase Suspension on Sector. \n");
+            }
+            adesto_ds();
+            xSemaphoreGive(spi_bus_lock);
+        }
+        vTaskDelay(1);
+    }
+}
+
+void ReadPage(void *p)
+{
+    LabSPI Lab;
+    Lab.init(LabSPI::Peripheral::SSP1, 7, LabSPI::FrameModes::SPI, 8);
+    while (1)
+    {
+        if(xSemaphoreTake(spi_bus_lock, 1000))
+        {
+            adesto_cs();
+            //read_512_byte_page();
+            Lab.transfer(0xD2);
+            printf("\n---------------------Reading Page--------------------- \n\n");
+            //grab 3 address bytes and rest of page
+            Lab.transfer(0x00);
+            Lab.transfer(0x00);
+            Lab.transfer(0x00);
+            Lab.transfer(0x00);
+            Lab.transfer(0x00);
+            Lab.transfer(0x00);
+            Lab.transfer(0x00);
+            adesto_ds();
+
+            xSemaphoreGive(spi_bus_lock);
+        }
+        vTaskDelay(1);
+    }
+
+    int main(void)
+{
+    const uint32_t STACK_SIZE = 1024;
+    LabSPI Labtest;
+    //Labtest.init(LabSPI::Peripheral::SSP1, 7, LabSPI::FrameModes::SPI, 8);//TESTING
+
+    spi_bus_lock = xSemaphoreCreateMutex();
+    xTaskCreate(SignalRead, "Read Signal", 512, ( void * ) 1, 1, NULL );
+    xTaskCreate(ReadPage, "Read Page", 512, ( void * ) 1, 1, NULL );
+    vTaskStartScheduler();
+    return 0;
+}
+}*/

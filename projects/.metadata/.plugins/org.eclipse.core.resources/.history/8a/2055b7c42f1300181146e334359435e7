@@ -1,0 +1,234 @@
+/*
+ *     SocialLedge.com - Copyright (C) 2013
+ *
+ *     This file is part of free software framework for embedded processors.
+ *     You can use it and/or distribute it as long as this copyright header
+ *     remains unmodified.  The code is free for personal use and requires
+ *     permission to use in a commercial product.
+ *
+ *      THIS SOFTWARE IS PROVIDED "AS IS".  NO WARRANTIES, WHETHER EXPRESS, IMPLIED
+ *      OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF
+ *      MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE.
+ *      I SHALL NOT, IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR
+ *      CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
+ *
+ *     You can reach the author of this software at :
+ *          p r e e t . w i k i @ g m a i l . c o m
+ */
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "uart0_min.h"
+#include "labGPIO0.h"
+#include "stdlib.h"
+#include "stdio.h"
+bool switchedOn = false;
+bool externalSwitchedOn = false;
+
+void vTaskOneCode(void * pvParameters)
+{
+    while(1)
+    {
+        uart0_puts("aaaaaaaaaaaaaaaaaaaa");
+        vTaskDelay(100); // This sleeps the task for 100ms (because 1 RTOS tick = 1 millisecond)
+    }
+}
+
+// Create another task and run this code in a while(1) loop
+void vTaskTwoCode(void * pvParameters)
+{
+    while(1)
+    {
+        uart0_puts("bbbbbbbbbbbbbbbbbbbb");
+        vTaskDelay(100);
+    }
+}
+
+
+
+void vControlLED0( void * pvParameters )
+{
+    /* Get Parameter */
+    uint32_t param = (uint32_t)(pvParameters);
+    /* Define Constants Here */
+
+    /* Define Local Variables and Objects */
+
+    /* Initialization Code */
+    LabGPIO_1 Port0Control(param);
+
+    //printf("In Control LED0\n");
+    while(1)
+    {
+
+        if(externalSwitchedOn)
+               {
+                   printf("Turn ON \n");
+                   Port0Control.setDirection(true);
+                   Port0Control.setLow();
+                   vTaskDelay(100);
+                   Port0Control.setHigh();
+                   vTaskDelay(100);
+                   Port0Control.setLow();
+                   vTaskDelay(100);
+                   Port0Control.setHigh();
+               }
+        vTaskDelay(100);
+        /* Insert Loop Code */
+    }
+    /* Only necessary if above loop has a condition */
+    //xTaskDelete(NULL);
+}
+
+void vReadSwitch0( void * pvParameters )
+{
+    /* Get Parameter */
+    uint32_t param = (uint32_t)(pvParameters);
+    /* Define Constants Here */
+
+    /* Define Local Variables and Objects */
+
+    /* Initialization Code */
+
+    LabGPIO_0 Port0Read(param);
+    //Port0Read.setDirection(false);
+   // Port0Read.setAsInput();
+           while(1)
+              {
+                  printf("Im in read \n");
+                  if(Port0Read.getLevel())
+                  {
+                      externalSwitchedOn=true;
+                      printf("Im in read Switch! true!   \n");
+
+
+                  }
+                  else{
+                      printf("False \n");
+                      externalSwitchedOn= false;
+                  }
+
+                  vTaskDelay(100);
+
+                  /* Insert Loop Code */
+              }
+        /* Insert Loop Code */
+
+    /* Only necessary if above loop has a condition */
+    //xTaskDelete(NULL);
+}
+
+
+void vControlLED1( void * pvParameters )
+{
+    /* Get Parameter */
+       uint32_t param = (uint32_t)(pvParameters);
+       /* Define Constants Here */
+
+       /* Define Local Variables and Objects */
+
+       /* Initialization Code */
+       LabGPIO_1 Port1Control(param);
+
+
+       while(1)
+           {
+               printf("In Control LED1\n");
+               if(switchedOn)
+               {
+                   printf("Turn ON \n");
+                   Port1Control.setDirection(true);
+                   Port1Control.setLow();
+                   vTaskDelay(100);
+                   Port1Control.setHigh();
+                   vTaskDelay(100);
+                   Port1Control.setLow();
+                   vTaskDelay(100);
+                   Port1Control.setHigh();
+               }
+               vTaskDelay(100);
+
+               /* Insert Loop Code */
+           }
+       /* Only necessary if above loop has a condition */
+       //xTaskDelete(NULL);
+}
+
+void vReadSwitch1( void * pvParameters )
+{
+    /* Get Parameter */
+       uint32_t param = (uint32_t)(pvParameters);
+       /* Define Constants Here */
+
+       /* Define Local Variables and Objects */
+
+       /* Initialization Code */
+
+       LabGPIO_1 Port1Read(param);
+       while(1)
+          {
+             // printf("Im in read \n");
+              if(Port1Read.getLevel())
+              {
+                  switchedOn=true;
+                  printf("Im in read Switch! true!   \n");
+
+
+              }
+              else{
+                  switchedOn= false;
+              }
+
+              vTaskDelay(100);
+
+              /* Insert Loop Code */
+          }
+       /* Only necessary if above loop has a condition */
+       //xTaskDelete(NULL);
+}
+
+
+// You can comment out the sample code of lpc1758_freertos project and run this code instead
+int main(int argc, char const *argv[])
+{
+//    /// This "stack" memory is enough for each task to run properly
+    const uint32_t STACK_SIZE = 1024;
+
+    xTaskCreate(vReadSwitch0,
+            "External One",          /* Text name for the task. */
+            STACK_SIZE,      /* Stack size in words, not bytes. */
+            ( void * ) 0,    /* Parameter passed into the task. */
+            1,              /* Priority at which the task is created. */
+            NULL );      /* Used to pass out the created task's handle. */
+    xTaskCreate(vControlLED0,
+            "External Two",          /* Text name for the task. */
+            STACK_SIZE,      /* Stack size in words, not bytes. */
+            ( void * ) 1,    /* Parameter passed into the task. */
+            1,              /* Priority at which the task is created. */
+            NULL );          /* Used to pass out the created task's handle. */
+//    xTaskCreate(vReadSwitch1,
+//               "Internal One",          /* Text name for the task. */
+//               STACK_SIZE,      /* Stack size in words, not bytes. */
+//               ( void * ) 9,    /* Parameter passed into the task. */
+//               1,              /* Priority at which the task is created. */
+//               NULL );      /* Used to pass out the created task's handle. */
+//   xTaskCreate(vControlLED1,
+//               "Internal Two",          /* Text name for the task. */
+//               STACK_SIZE,      /* Stack size in words, not bytes. */
+//               ( void * ) 0,    /* Parameter passed into the task. */
+//               1,              /* Priority at which the task is created. */
+//               NULL );          /* Used to pass out the created task's handle. */
+
+//    /* Start Scheduler - This will not return, and your tasks will start to run their while(1) loop */
+    vTaskStartScheduler();
+
+
+
+
+    return 0;
+}
+
+//--------------------------------------------------------------------
+
+
+

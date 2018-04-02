@@ -1,0 +1,20 @@
+/*
+ * LabSPI.cpp
+ *
+ *  Created on: Mar 2, 2018
+ *      Author: cborm
+ */
+
+#include <LabSPI.h>
+
+LabSPI::LabSPI()
+{
+    // TODO Auto-generated constructor stub
+
+}
+
+LabSPI::~LabSPI()
+{
+    // TODO Auto-generated destructor stub
+}
+
